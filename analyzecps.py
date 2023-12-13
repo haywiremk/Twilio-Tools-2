@@ -162,7 +162,7 @@ def main(args):
         cps_lines = csv.DictReader(cps_file, fieldnames=['dt', 'cps'])
         for cps_line in cps_lines:
             num_read += 1
-            dt = datetime.fromisoformat(cps_line['dt'])
+            dt = datetime.fromisoformat(cps_line['dt']).replace(tzinfo=None)
 
             # Filter records outside of the chosen period.
             if args.start and dt < args.start: continue

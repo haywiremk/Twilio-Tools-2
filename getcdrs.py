@@ -126,7 +126,7 @@ def get_args():
                 "parameters in a file, one parameter per line."),
         fromfile_prefix_chars='@')
     parser.add_argument(
-        'cdr_file', type=argparse.FileType('w'), 
+        'cdr_file', type=argparse.FileType('w',1000), 
         help="output CSV file")
     parser.add_argument(
         '-s', '--start', type=datetime.fromisoformat, default=first_of_last_month,
@@ -171,6 +171,8 @@ def get_args():
 # the specified account, and optionally for its subaccounts.  
 def calls(args):
     client = Client(args.account, args.pw)
+    page_size = 2000
+    record_count = 0
 
     try:
         if args.subs:
@@ -179,10 +181,19 @@ def calls(args):
             accounts = [client.api.accounts(args.account).fetch()]
 
         for account in accounts:      
+            has_more_records = True
+            if(record_count): print('\r'+ str(record_count) + '-' + str(call.date_created), flush=True)
+            record_count = 0
             logger.info("Getting CDRs for account %s (%s)", account.sid, account.friendly_name)
             client = Client(args.account, args.pw, account.sid)
-            calls = client.calls.list(start_time_after=args.start, start_time_before=args.end)
-            for call in calls:
+            for call in client.calls.stream(start_time_after=args.start, start_time_before=args.end, page_size=page_size):
+            # for call in client.calls.stream(page_size=page_size):
+                # Check if there are more records available
+                record_count+=1
+                # print(record_count, end='')
+                if((record_count % page_size) == 0): 
+                    print('\r'+ str(record_count) + '@' + str(call.date_created), end='', flush=True)
+                # if((record_count % page_size) == 0): print(call.date_created)
                 yield call
 
     except TwilioException as ex:
